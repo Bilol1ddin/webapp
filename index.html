@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>O'quv Markaz — Admin Panel</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #0a0e1a;
+  --bg2:      #111827;
+  --bg3:      #1c2538;
+  --border:   #2a3550;
+  --accent:   #3b82f6;
+  --accent2:  #6366f1;
+  --green:    #22c55e;
+  --red:      #ef4444;
+  --yellow:   #f59e0b;
+  --text:     #e2e8f0;
+  --muted:    #64748b;
+  --card-bg:  #141b2d;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Space Grotesk', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Grid bg */
+body::before {
+  content:'';
+  position:fixed; inset:0;
+  background-image:
+    linear-gradient(rgba(59,130,246,.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59,130,246,.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events:none; z-index:0;
+}
+
+/* ── HEADER ── */
+header {
+  position:sticky; top:0; z-index:100;
+  background: rgba(10,14,26,.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  height: 64px;
+  display: flex; align-items:center; justify-content:space-between;
+}
+.logo { display:flex; align-items:center; gap:10px; font-weight:700; font-size:1.1rem; }
+.logo-dot { width:8px; height:8px; border-radius:50%; background:var(--accent); box-shadow:0 0 12px var(--accent); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.header-right { display:flex; align-items:center; gap:12px; }
+.badge { padding:4px 12px; border-radius:20px; font-size:.75rem; font-weight:600; background:rgba(59,130,246,.15); color:var(--accent); border:1px solid rgba(59,130,246,.3); }
+#time-display { font-family:'JetBrains Mono',monospace; font-size:.85rem; color:var(--muted); }
+
+/* ── NAV TABS ── */
+nav {
+  display:flex; gap:4px;
+  padding: 16px 24px 0;
+  border-bottom: 1px solid var(--border);
+  position:sticky; top:64px; z-index:99;
+  background: var(--bg);
+}
+.tab {
+  padding: 10px 20px;
+  border-radius: 8px 8px 0 0;
+  border: 1px solid transparent;
+  border-bottom: none;
+  cursor: pointer;
+  font-size:.875rem; font-weight:500;
+  color: var(--muted);
+  transition: all .2s;
+  display:flex; align-items:center; gap:8px;
+  position: relative; bottom: -1px;
+}
+.tab:hover { color:var(--text); background:var(--bg2); }
+.tab.active {
+  color:var(--accent);
+  background: var(--bg2);
+  border-color: var(--border);
+  border-bottom-color: var(--bg2);
+}
+.tab .cnt {
+  background: rgba(59,130,246,.2);
+  color: var(--accent);
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-size:.7rem;
+  font-family:'JetBrains Mono',monospace;
+}
+
+/* ── MAIN ── */
+main { padding: 24px; max-width: 1200px; margin: 0 auto; position:relative; z-index:1; }
+.page { display:none; }
+.page.active { display:block; animation: fadeIn .3s ease; }
+@keyframes fadeIn { from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:translateY(0)} }
+
+/* ── CARDS ── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px; margin-bottom: 24px;
+}
+.stat-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  position:relative; overflow:hidden;
+  transition: transform .2s, border-color .2s;
+}
+.stat-card:hover { transform:translateY(-2px); border-color:var(--accent); }
+.stat-card::before {
+  content:'';
+  position:absolute; top:0; left:0; right:0; height:2px;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+}
+.stat-icon { font-size:1.8rem; margin-bottom:8px; }
+.stat-value { font-size:2rem; font-weight:700; font-family:'JetBrains Mono',monospace; line-height:1; }
+.stat-label { font-size:.8rem; color:var(--muted); margin-top:4px; }
+.stat-change { font-size:.75rem; margin-top:8px; display:flex; align-items:center; gap:4px; }
+.stat-change.up { color:var(--green); }
+.stat-change.down { color:var(--red); }
+
+/* ── TABLE ── */
+.section-header {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:16px;
+}
+.section-title { font-size:1rem; font-weight:600; display:flex; align-items:center; gap:8px; }
+.section-title::before {
+  content:''; display:inline-block;
+  width:3px; height:18px; border-radius:2px;
+  background: linear-gradient(var(--accent), var(--accent2));
+}
+
+.search-box {
+  display:flex; align-items:center; gap:8px;
+  background:var(--bg2); border:1px solid var(--border);
+  border-radius:8px; padding:8px 12px;
+  transition:border-color .2s;
+}
+.search-box:focus-within { border-color:var(--accent); }
+.search-box input {
+  background:none; border:none; outline:none;
+  color:var(--text); font-family:inherit; font-size:.875rem;
+  width:200px;
+}
+.search-box input::placeholder { color:var(--muted); }
+
+table {
+  width:100%; border-collapse:collapse;
+  background:var(--card-bg); border:1px solid var(--border);
+  border-radius:12px; overflow:hidden;
+}
+th {
+  padding:12px 16px; text-align:left;
+  font-size:.75rem; font-weight:600; text-transform:uppercase;
+  letter-spacing:.05em; color:var(--muted);
+  background:var(--bg2); border-bottom:1px solid var(--border);
+}
+td { padding:12px 16px; border-bottom:1px solid rgba(42,53,80,.5); font-size:.875rem; }
+tr:last-child td { border-bottom:none; }
+tr:hover td { background:rgba(59,130,246,.04); }
+
+/* ── PROGRESS BAR ── */
+.progress-wrap { display:flex; align-items:center; gap:10px; }
+.progress-bar-bg {
+  flex:1; height:6px; border-radius:3px;
+  background:rgba(255,255,255,.08); overflow:hidden;
+}
+.progress-bar-fill {
+  height:100%; border-radius:3px;
+  transition:width .8s cubic-bezier(.4,0,.2,1);
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+}
+.progress-bar-fill.high { background:linear-gradient(90deg, #22c55e, #16a34a); }
+.progress-bar-fill.mid  { background:linear-gradient(90deg, #f59e0b, #d97706); }
+.progress-bar-fill.low  { background:linear-gradient(90deg, #ef4444, #dc2626); }
+.pct { font-family:'JetBrains Mono',monospace; font-size:.8rem; color:var(--muted); width:38px; text-align:right; }
+
+/* ── BADGES ── */
+.chip {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:3px 10px; border-radius:20px; font-size:.75rem; font-weight:600;
+}
+.chip.green  { background:rgba(34,197,94,.15); color:var(--green); }
+.chip.yellow { background:rgba(245,158,11,.15); color:var(--yellow); }
+.chip.red    { background:rgba(239,68,68,.15); color:var(--red); }
+.chip.blue   { background:rgba(59,130,246,.15); color:var(--accent); }
+
+/* ── GURUH PANEL ── */
+.guruh-grid {
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
+  gap:16px;
+}
+.guruh-card {
+  background:var(--card-bg); border:1px solid var(--border);
+  border-radius:12px; padding:20px;
+  cursor:pointer; transition:all .2s;
+}
+.guruh-card:hover { border-color:var(--accent); transform:translateY(-2px); box-shadow:0 8px 32px rgba(59,130,246,.1); }
+.guruh-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; }
+.guruh-otuvchi { font-weight:600; font-size:.95rem; }
+.guruh-meta { font-size:.78rem; color:var(--muted); margin-top:3px; }
+.guruh-students { font-size:.8rem; color:var(--muted); }
+
+/* ── DAVOMAT TABLE ── */
+.dav-student-row {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 12px; border-radius:8px;
+  border:1px solid var(--border); margin-bottom:8px;
+  background:var(--bg2); cursor:pointer; transition:all .15s;
+}
+.dav-student-row:hover { border-color:var(--accent); }
+.dav-ism { font-size:.875rem; font-weight:500; }
+.dav-toggle {
+  display:flex; gap:8px;
+}
+.dav-btn {
+  padding:5px 14px; border-radius:6px; border:none;
+  font-family:inherit; font-size:.8rem; font-weight:600;
+  cursor:pointer; transition:all .15s;
+}
+.dav-btn.keldi   { background:rgba(34,197,94,.2); color:var(--green); }
+.dav-btn.kelmadi { background:rgba(239,68,68,.2); color:var(--red); }
+.dav-btn.active-keldi   { background:var(--green); color:#fff; }
+.dav-btn.active-kelmadi { background:var(--red); color:#fff; }
+
+/* ── DATE PICKER ── */
+.date-row {
+  display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;
+}
+.date-chip {
+  padding:6px 14px; border-radius:20px;
+  border:1px solid var(--border); cursor:pointer;
+  font-size:.8rem; transition:all .15s; background:var(--bg2);
+}
+.date-chip:hover { border-color:var(--accent); color:var(--accent); }
+.date-chip.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+
+/* ── BUTTONS ── */
+.btn {
+  padding:10px 20px; border-radius:8px; border:none;
+  font-family:inherit; font-size:.875rem; font-weight:600;
+  cursor:pointer; transition:all .2s; display:inline-flex; align-items:center; gap:8px;
+}
+.btn-primary { background:var(--accent); color:#fff; }
+.btn-primary:hover { background:#2563eb; transform:translateY(-1px); }
+.btn-secondary { background:var(--bg2); color:var(--text); border:1px solid var(--border); }
+.btn-secondary:hover { border-color:var(--accent); color:var(--accent); }
+.btn-success { background:var(--green); color:#fff; }
+.btn-danger  { background:var(--red); color:#fff; }
+
+/* ── LOADING ── */
+.spinner {
+  width:32px; height:32px; border-radius:50%;
+  border:3px solid var(--border);
+  border-top-color:var(--accent);
+  animation:spin .8s linear infinite;
+}
+@keyframes spin { to{transform:rotate(360deg)} }
+.loading-state { display:flex; align-items:center; justify-content:center; gap:12px; padding:48px; color:var(--muted); }
+
+/* ── TOAST ── */
+#toast {
+  position:fixed; bottom:24px; right:24px; z-index:1000;
+  background:var(--card-bg); border:1px solid var(--border);
+  border-radius:10px; padding:12px 20px;
+  display:flex; align-items:center; gap:10px;
+  transform:translateX(120%); transition:transform .3s cubic-bezier(.4,0,.2,1);
+  box-shadow:0 8px 32px rgba(0,0,0,.4);
+  max-width:320px;
+}
+#toast.show { transform:translateX(0); }
+
+/* ── ELON ── */
+#elon-matn {
+  width:100%; min-height:120px;
+  background:var(--bg2); border:1px solid var(--border);
+  border-radius:8px; padding:12px; color:var(--text);
+  font-family:inherit; font-size:.9rem; resize:vertical;
+  outline:none; transition:border-color .2s;
+}
+#elon-matn:focus { border-color:var(--accent); }
+
+/* ── ANALITIKA ── */
+.chart-bar-row { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+.chart-label { font-size:.78rem; color:var(--muted); width:70px; text-align:right; font-family:'JetBrains Mono',monospace; }
+.chart-bar-track { flex:1; height:8px; border-radius:4px; background:rgba(255,255,255,.06); overflow:hidden; }
+.chart-bar-val { height:100%; border-radius:4px; background:linear-gradient(90deg,var(--accent),var(--accent2)); transition:width 1s ease; }
+.chart-pct { font-size:.78rem; color:var(--muted); width:38px; font-family:'JetBrains Mono',monospace; }
+
+/* ── RESPONSIVE ── */
+@media(max-width:640px){
+  nav { padding:12px 16px 0; gap:2px; }
+  .tab { padding:8px 12px; font-size:.8rem; }
+  main { padding:16px; }
+  .stats-grid { grid-template-columns:1fr 1fr; }
+  .guruh-grid { grid-template-columns:1fr; }
+  .search-box input { width:130px; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    O'quv Markaz
+  </div>
+  <div class="header-right">
+    <span class="badge">Admin Panel</span>
+    <span id="time-display">--:--:--</span>
+  </div>
+</header>
+
+<nav>
+  <div class="tab active" onclick="showTab('dashboard')">📊 Dashboard</div>
+  <div class="tab" onclick="showTab('davomat')">✅ Davomat <span class="cnt" id="tab-guruh-cnt">0</span></div>
+  <div class="tab" onclick="showTab('oquvchilar')">👥 O'quvchilar <span class="cnt" id="tab-oq-cnt">0</span></div>
+  <div class="tab" onclick="showTab('analitika')">📨 Analitika</div>
+  <div class="tab" onclick="showTab('elon')">📢 E'lon</div>
+</nav>
+
+<main>
+
+<!-- ── DASHBOARD ── -->
+<div class="page active" id="page-dashboard">
+  <div class="stats-grid" id="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon">👥</div>
+      <div class="stat-value" id="s-jami">—</div>
+      <div class="stat-label">Jami o'quvchi</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">✅</div>
+      <div class="stat-value" id="s-keldi">—</div>
+      <div class="stat-label">Bugun keldi</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">🏆</div>
+      <div class="stat-value" id="s-toliq">—</div>
+      <div class="stat-label">100% davomat</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">📊</div>
+      <div class="stat-value" id="s-foiz">—</div>
+      <div class="stat-label">O'rtacha davomat</div>
+    </div>
+  </div>
+
+  <div class="section-header">
+    <div class="section-title">Guruhlar statistikasi</div>
+    <button class="btn btn-secondary" onclick="loadDashboard()">🔄 Yangilash</button>
+  </div>
+  <div id="dashboard-table">
+    <div class="loading-state"><div class="spinner"></div> Yuklanmoqda...</div>
+  </div>
+</div>
+
+<!-- ── DAVOMAT ── -->
+<div class="page" id="page-davomat">
+  <div id="davomat-guruhlar">
+    <div class="section-header">
+      <div class="section-title">Guruhni tanlang</div>
+      <button class="btn btn-secondary" onclick="loadGuruhlar()">🔄 Yangilash</button>
+    </div>
+    <div class="guruh-grid" id="guruh-grid">
+      <div class="loading-state"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <div id="davomat-panel" style="display:none">
+    <div class="section-header">
+      <div class="section-title" id="dav-guruh-title">Guruh</div>
+      <button class="btn btn-secondary" onclick="backToGuruhlar()">← Orqaga</button>
+    </div>
+
+    <div class="date-row" id="dav-date-row"></div>
+
+    <div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap">
+      <button class="btn btn-success" onclick="allKeldi()">✅ Barchasi keldi</button>
+      <button class="btn btn-danger"  onclick="allKelmadi()">❌ Hech kim kelmadi</button>
+      <span id="dav-sana-label" style="display:flex;align-items:center;font-size:.8rem;color:var(--muted)"></span>
+    </div>
+
+    <div id="dav-students-list"></div>
+  </div>
+</div>
+
+<!-- ── O'QUVCHILAR ── -->
+<div class="page" id="page-oquvchilar">
+  <div class="section-header">
+    <div class="section-title">O'quvchilar ro'yxati</div>
+    <div class="search-box">
+      <span style="color:var(--muted)">🔍</span>
+      <input type="text" id="search-input" placeholder="Ism bo'yicha qidirish..." oninput="filterTable()">
+    </div>
+  </div>
+  <div style="overflow-x:auto">
+    <table id="oquvchi-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Ism</th>
+          <th>O'qituvchi</th>
+          <th>Fan</th>
+          <th>Vaqt</th>
+          <th>Kunlar</th>
+          <th>Davomat</th>
+          <th>Holat</th>
+        </tr>
+      </thead>
+      <tbody id="oquvchi-tbody">
+        <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:32px">Yuklanmoqda...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── ANALITIKA ── -->
+<div class="page" id="page-analitika">
+  <div class="section-header">
+    <div class="section-title">Xabar yuborish analitikasi</div>
+  </div>
+  <div class="stats-grid" style="grid-template-columns:repeat(3,1fr)">
+    <div class="stat-card">
+      <div class="stat-icon">📤</div>
+      <div class="stat-value" id="an-jami">—</div>
+      <div class="stat-label">Jami yuborildi</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">✅</div>
+      <div class="stat-value" id="an-muvaffaq">—</div>
+      <div class="stat-label">Muvaffaqiyatli</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">❌</div>
+      <div class="stat-value" id="an-xato">—</div>
+      <div class="stat-label">Xato</div>
+    </div>
+  </div>
+  <div class="section-header" style="margin-top:24px">
+    <div class="section-title">Oxirgi eslatmalar</div>
+  </div>
+  <div id="analitika-chart" style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:24px">
+    <div class="loading-state"><div class="spinner"></div></div>
+  </div>
+</div>
+
+<!-- ── E'LON ── -->
+<div class="page" id="page-elon">
+  <div class="section-header">
+    <div class="section-title">Barcha o'quvchilarga e'lon yuborish</div>
+  </div>
+  <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:24px">
+    <label style="display:block;font-size:.85rem;color:var(--muted);margin-bottom:8px">E'lon matni:</label>
+    <textarea id="elon-matn" placeholder="E'lon matnini yozing...&#10;&#10;Masalan: Ertaga darslar bo'lmaydi. Sababi: bayram..."></textarea>
+
+    <div style="margin-top:16px; padding:16px; background:var(--bg2); border:1px solid var(--border); border-radius:8px; display:none" id="elon-preview">
+      <div style="font-size:.75rem;color:var(--muted);margin-bottom:8px">Ko'rinish:</div>
+      <div style="font-weight:700;margin-bottom:8px">📣 O'QUV MARKAZ E'LONI</div>
+      <div id="elon-preview-text" style="font-size:.9rem"></div>
+    </div>
+
+    <div style="display:flex;gap:12px;margin-top:16px;flex-wrap:wrap">
+      <button class="btn btn-secondary" onclick="elonPreview()">👁 Ko'rinish</button>
+      <button class="btn btn-primary" onclick="elonYuborish()">📢 Yuborish</button>
+    </div>
+    <div id="elon-status" style="margin-top:12px;font-size:.875rem"></div>
+  </div>
+
+  <div style="margin-top:24px">
+    <div class="section-header">
+      <div class="section-title">O'quvchilar statistikasi</div>
+    </div>
+    <div id="elon-stats" style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:20px;color:var(--muted)">
+      <div id="elon-stats-content">...</div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<div id="toast">
+  <span id="toast-icon">✅</span>
+  <span id="toast-msg"></span>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+let state = {
+  guruhlar: [],
+  oquvchilar: [],
+  davomat: {},
+  analitika: [],
+  joriy_guruh: null,
+  joriy_sana: null,
+};
+
+const KUN_Q = {0:"Du",1:"Se",2:"Cho",3:"Pa",4:"Ju",5:"Sha"};
+const KUN_N = {0:"Dushanba",1:"Seshanba",2:"Chorshanba",3:"Payshanba",4:"Juma",5:"Shanba",6:"Yakshanba"};
+
+// ═══════════════════════════════════════════
+// DATA LOADING — JSON fayllardan o'qish
+// ═══════════════════════════════════════════
+async function loadJSON(path) {
+  try {
+    const r = await fetch(path + '?t=' + Date.now());
+    if (!r.ok) return null;
+    return await r.json();
+  } catch(e) {
+    return null;
+  }
+}
+
+async function loadAll() {
+  const [users, davomat, analitika] = await Promise.all([
+    loadJSON('users.json'),
+    loadJSON('davomat.json'),
+    loadJSON('analitika.json'),
+  ]);
+  state.davomat = davomat?.oquvchilar || {};
+  state.analitika = analitika?.eslatmalar || [];
+  state.oquvchilar = buildOquvchilar(users || {});
+  state.guruhlar   = buildGuruhlar(users || {}, state.davomat);
+  document.getElementById('tab-guruh-cnt').textContent = state.guruhlar.length;
+  document.getElementById('tab-oq-cnt').textContent = state.oquvchilar.length;
+}
+
+function buildOquvchilar(users) {
+  const bugun = new Date();
+  const oy = bugun.getFullYear()+'-'+(bugun.getMonth()+1).toString().padStart(2,'0');
+  const list = [];
+  for (const [tid, entries] of Object.entries(users)) {
+    const dav = state.davomat[tid]?.davomat || {};
+    const oy_dav = Object.entries(dav).filter(([s])=>s.startsWith(oy));
+    const keldi  = oy_dav.filter(([,v])=>v===true).length;
+    const kelmadi= oy_dav.filter(([,v])=>v===false).length;
+    for (const e of (entries||[])) {
+      list.push({tid, ism:e.ism, otuvchi:e.otuvchi||'—', fan:e.fan, vaqt:e.vaqt, kunlar:e.kunlar, keldi, kelmadi});
+    }
+  }
+  return list;
+}
+
+function buildGuruhlar(users, davomat) {
+  const map = {};
+  for (const [tid, entries] of Object.entries(users)) {
+    const ism = davomat[tid]?.ism || (entries[0]?.ism || 'Noma\'lum');
+    for (const e of (entries||[])) {
+      const gid = gidYasatish(e.otuvchi||'', e.vaqt, e.kunlar||[]);
+      if (!map[gid]) {
+        map[gid] = {id:gid, otuvchi:e.otuvchi||'—', vaqt:e.vaqt, kunlar:e.kunlar||[], tur:e.kunlar?.includes(0)?'D/CH/J':'S/P/SH', oquvchilar:[]};
+      }
+      if (!map[gid].oquvchilar.find(o=>o.tid===tid)) {
+        map[gid].oquvchilar.push({tid, ism});
+      }
+    }
+  }
+  return Object.values(map).sort((a,b)=>a.vaqt.localeCompare(b.vaqt));
+}
+
+function gidYasatish(otuvchi, vaqt, kunlar) {
+  const tur = kunlar.includes(0)?'D':'S';
+  const ot  = otuvchi.replace(/[^A-Za-z0-9]/g,'').slice(0,8);
+  const vt  = vaqt.replace(':','');
+  return tur+vt+ot;
+}
+
+// ═══════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════
+async function loadDashboard() {
+  await loadAll();
+  const bugun = new Date();
+  const bugunStr = bugun.toISOString().split('T')[0];
+  const oy = bugun.getFullYear()+'-'+(bugun.getMonth()+1).toString().padStart(2,'0');
+
+  let jami=0, keldi_today=0, toliq=0, foiz_sum=0, foiz_count=0;
+  const seen = new Set();
+
+  for (const [tid, info] of Object.entries(state.davomat)) {
+    if (seen.has(tid)) continue; seen.add(tid);
+    jami++;
+    if (info.davomat?.[bugunStr]===true) keldi_today++;
+    const oy_dav = Object.entries(info.davomat||{}).filter(([s])=>s.startsWith(oy));
+    const k = oy_dav.filter(([,v])=>v===true).length;
+    const j = oqJami(tid, bugun.getFullYear(), bugun.getMonth()+1);
+    if (j > 0) {
+      const f = Math.round(k/j*100);
+      foiz_sum += f; foiz_count++;
+      if (k===j) toliq++;
+    }
+  }
+
+  document.getElementById('s-jami').textContent  = jami;
+  document.getElementById('s-keldi').textContent = keldi_today;
+  document.getElementById('s-toliq').textContent = toliq;
+  document.getElementById('s-foiz').textContent  = foiz_count>0 ? Math.round(foiz_sum/foiz_count)+'%' : '—';
+
+  // Guruh jadvali
+  let html = '<table><thead><tr><th>O\'qituvchi</th><th>Vaqt</th><th>Tur</th><th>O\'quvchilar</th><th>O\'rtacha davomat</th><th>100%</th></tr></thead><tbody>';
+  for (const g of state.guruhlar) {
+    const n = g.oquvchilar.length;
+    let kj=0, jj=0, toliq_n=0;
+    for (const oq of g.oquvchilar) {
+      const jami_d = oqJami(oq.tid, bugun.getFullYear(), bugun.getMonth()+1, g.kunlar);
+      const oy_dav = Object.entries(state.davomat[oq.tid]?.davomat||{})
+        .filter(([s])=>s.startsWith(oy));
+      const k = oy_dav.filter(([,v])=>v===true).length;
+      kj+=k; jj+=jami_d;
+      if (k===jami_d&&jami_d>0) toliq_n++;
+    }
+    const f = jj>0 ? Math.round(kj/jj*100) : 0;
+    const cls = f>=80?'high':f>=50?'mid':'low';
+    const chip = f>=80?`<span class="chip green">▲ ${f}%</span>`:f>=50?`<span class="chip yellow">≈ ${f}%</span>`:`<span class="chip red">↓ ${f}%</span>`;
+    html += `<tr>
+      <td><strong>${g.otuvchi}</strong></td>
+      <td><code style="font-family:'JetBrains Mono';font-size:.8rem">${g.vaqt}</code></td>
+      <td><span class="chip blue">${g.tur}</span></td>
+      <td>${n} ta</td>
+      <td><div class="progress-wrap">
+        <div class="progress-bar-bg"><div class="progress-bar-fill ${cls}" style="width:${f}%"></div></div>
+        <span class="pct">${f}%</span>
+      </div></td>
+      <td>${chip}</td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  document.getElementById('dashboard-table').innerHTML = html;
+}
+
+function oqJami(tid, yil, oy, kunlarOverride) {
+  const users = state.oquvchilar.filter(o=>o.tid===tid);
+  const kunlar = kunlarOverride || (users[0]?.kunlar || [0,1,2,3,4,5]);
+  const oxir = new Date(yil, oy, 0).getDate();
+  let count = 0;
+  for (let k=1; k<=oxir; k++) {
+    const d = new Date(yil, oy-1, k);
+    if (kunlar.includes(d.getDay()===0?6:d.getDay()-1) && d.getDay()!==0) count++;
+    // JS: 0=Yakshanba, 1=Du...6=Shanba
+    // Bizning: 0=Du,1=Se,...,5=Sha,6=Yak
+  }
+  return count;
+}
+
+// ═══════════════════════════════════════════
+// DAVOMAT
+// ═══════════════════════════════════════════
+async function loadGuruhlar() {
+  await loadAll();
+  const grid = document.getElementById('guruh-grid');
+  if (!state.guruhlar.length) {
+    grid.innerHTML = '<div style="color:var(--muted);padding:32px;grid-column:1/-1">O\'quvchilar hali /start bosib ro\'yxatdan o\'tmaganlar.</div>';
+    return;
+  }
+  const bugun = new Date();
+  const oy = bugun.getFullYear()+'-'+(bugun.getMonth()+1).toString().padStart(2,'0');
+
+  grid.innerHTML = state.guruhlar.map(g => {
+    const n = g.oquvchilar.length;
+    let kj=0, jj=0;
+    for (const oq of g.oquvchilar) {
+      const oy_dav = Object.entries(state.davomat[oq.tid]?.davomat||{}).filter(([s])=>s.startsWith(oy));
+      kj += oy_dav.filter(([,v])=>v===true).length;
+      jj += oqJami(oq.tid, bugun.getFullYear(), bugun.getMonth()+1, g.kunlar);
+    }
+    const f = jj>0 ? Math.round(kj/jj*100) : 0;
+    const tur_str = g.kunlar.includes(0) ? 'Du · Cho · Ju' : 'Se · Pa · Sha';
+    return `<div class="guruh-card" onclick="openGuruh('${g.id}')">
+      <div class="guruh-head">
+        <div>
+          <div class="guruh-otuvchi">👨‍🏫 ${g.otuvchi}</div>
+          <div class="guruh-meta">🕐 ${g.vaqt}  ·  ${tur_str}</div>
+        </div>
+        <span class="chip ${f>=80?'green':f>=50?'yellow':'red'}">${f}%</span>
+      </div>
+      <div class="progress-wrap" style="margin-bottom:10px">
+        <div class="progress-bar-bg"><div class="progress-bar-fill ${f>=80?'high':f>=50?'mid':'low'}" style="width:${f}%"></div></div>
+      </div>
+      <div class="guruh-students">👥 ${n} ta o'quvchi</div>
+    </div>`;
+  }).join('');
+}
+
+function openGuruh(gid) {
+  state.joriy_guruh = state.guruhlar.find(g=>g.id===gid);
+  if (!state.joriy_guruh) return;
+
+  document.getElementById('davomat-guruhlar').style.display='none';
+  document.getElementById('davomat-panel').style.display='block';
+
+  const tur_str = state.joriy_guruh.kunlar.includes(0) ? 'Du · Cho · Ju' : 'Se · Pa · Sha';
+  document.getElementById('dav-guruh-title').textContent =
+    `👨‍🏫 ${state.joriy_guruh.otuvchi}  🕐${state.joriy_guruh.vaqt}  (${tur_str})`;
+
+  // Oxirgi 10 dars kunilarni chiqarish
+  const dates = [];
+  let day = new Date();
+  while (dates.length < 10) {
+    const wd = day.getDay()===0 ? 6 : day.getDay()-1;
+    if (state.joriy_guruh.kunlar.includes(wd) && wd!==6) {
+      dates.push(new Date(day));
+    }
+    day.setDate(day.getDate()-1);
+  }
+
+  const dateRow = document.getElementById('dav-date-row');
+  dateRow.innerHTML = dates.map((d,i) => {
+    const s = d.toISOString().split('T')[0];
+    const label = d.toLocaleDateString('uz-UZ',{day:'2-digit',month:'short',weekday:'short'});
+    return `<div class="date-chip ${i===0?'active':''}" onclick="selectDate(this,'${s}')">${label}</div>`;
+  }).join('');
+
+  // Birinchi kunni tanlash
+  if (dates.length) {
+    state.joriy_sana = dates[0].toISOString().split('T')[0];
+    renderStudents();
+  }
+}
+
+function selectDate(el, sana) {
+  document.querySelectorAll('.date-chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  state.joriy_sana = sana;
+  renderStudents();
+}
+
+function renderStudents() {
+  if (!state.joriy_guruh || !state.joriy_sana) return;
+  const d_obj = new Date(state.joriy_sana);
+  const label = d_obj.toLocaleDateString('uz-UZ',{day:'2-digit',month:'long',weekday:'long',year:'numeric'});
+  document.getElementById('dav-sana-label').textContent = '📅 '+label;
+
+  let keldi_n=0, kelmadi_n=0, belgisiz_n=0;
+  const html = state.joriy_guruh.oquvchilar.map(oq => {
+    const holat = state.davomat[oq.tid]?.davomat?.[state.joriy_sana];
+    if (holat===true) keldi_n++;
+    else if (holat===false) kelmadi_n++;
+    else belgisiz_n++;
+    return `<div class="dav-student-row">
+      <div class="dav-ism">${oq.ism}</div>
+      <div class="dav-toggle">
+        <button class="dav-btn keldi ${holat===true?'active-keldi':''}" onclick="setDavomat('${oq.tid}', true)">✅ Keldi</button>
+        <button class="dav-btn kelmadi ${holat===false?'active-kelmadi':''}" onclick="setDavomat('${oq.tid}', false)">❌ Kelmadi</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  const n = state.joriy_guruh.oquvchilar.length;
+  const f = n>0 ? Math.round(keldi_n/n*100) : 0;
+
+  document.getElementById('dav-students-list').innerHTML =
+    `<div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;padding:12px 16px;background:var(--card-bg);border:1px solid var(--border);border-radius:8px">
+      <div class="progress-bar-bg" style="flex:1;height:8px"><div class="progress-bar-fill ${f>=80?'high':f>=50?'mid':'low'}" style="width:${f}%"></div></div>
+      <span style="font-family:'JetBrains Mono';font-size:.85rem;color:var(--muted)">${f}%</span>
+      <span style="font-size:.8rem;color:var(--muted)">✅${keldi_n} ❌${kelmadi_n} ⬜${belgisiz_n}</span>
+    </div>
+    ${html}`;
+}
+
+async function setDavomat(tid, keldi) {
+  if (!state.joriy_sana) return;
+  if (!state.davomat[tid]) state.davomat[tid] = {ism:'', davomat:{}};
+  state.davomat[tid].davomat[state.joriy_sana] = keldi;
+  renderStudents();
+
+  // Bot ga yuborish (agar bot ishlayotgan bo'lsa)
+  // Bu yerda Telegram Bot API ga murojaat qilish mumkin emas web app dan
+  // Shuning uchun davomat.json ni botga yetkazish uchun:
+  showToast(keldi ? '✅' : '❌', `${state.davomat[tid].ism || tid} — ${keldi?'keldi':'kelmadi'}`);
+}
+
+function allKeldi() {
+  if (!state.joriy_guruh || !state.joriy_sana) return;
+  for (const oq of state.joriy_guruh.oquvchilar) setDavomat(oq.tid, true);
+}
+function allKelmadi() {
+  if (!state.joriy_guruh || !state.joriy_sana) return;
+  for (const oq of state.joriy_guruh.oquvchilar) setDavomat(oq.tid, false);
+}
+
+function backToGuruhlar() {
+  document.getElementById('davomat-guruhlar').style.display='block';
+  document.getElementById('davomat-panel').style.display='none';
+  state.joriy_guruh = null;
+  state.joriy_sana  = null;
+}
+
+// ═══════════════════════════════════════════
+// O'QUVCHILAR
+// ═══════════════════════════════════════════
+function renderOquvchilar(list) {
+  const bugun = new Date();
+  const oy = bugun.getFullYear()+'-'+(bugun.getMonth()+1).toString().padStart(2,'0');
+  const tbody = document.getElementById('oquvchi-tbody');
+  if (!list.length) {
+    tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:32px">Ma\'lumot yo\'q</td></tr>';
+    return;
+  }
+  const seen = new Set();
+  let html = '', n = 1;
+  for (const oq of list) {
+    const key = oq.tid+'|'+oq.fan+'|'+oq.vaqt;
+    if (seen.has(key)) continue; seen.add(key);
+    const oy_dav = Object.entries(state.davomat[oq.tid]?.davomat||{}).filter(([s])=>s.startsWith(oy));
+    const k = oy_dav.filter(([,v])=>v===true).length;
+    const jami = oqJami(oq.tid, bugun.getFullYear(), bugun.getMonth()+1, oq.kunlar);
+    const f = jami>0 ? Math.round(k/jami*100) : 0;
+    const chip = f===100?'green':f>=75?'blue':f>=50?'yellow':'red';
+    const kunlar_str = (oq.kunlar||[]).map(k=>KUN_Q[k]).filter(Boolean).join('·');
+    html += `<tr>
+      <td style="color:var(--muted);font-family:'JetBrains Mono';font-size:.8rem">${n++}</td>
+      <td><strong>${oq.ism}</strong></td>
+      <td style="color:var(--muted)">${oq.otuvchi}</td>
+      <td>${oq.fan}</td>
+      <td style="font-family:'JetBrains Mono';font-size:.8rem">${oq.vaqt}</td>
+      <td style="font-size:.8rem">${kunlar_str}</td>
+      <td><div class="progress-wrap" style="min-width:120px">
+        <div class="progress-bar-bg"><div class="progress-bar-fill ${f>=80?'high':f>=50?'mid':'low'}" style="width:${f}%"></div></div>
+        <span class="pct">${f}%</span>
+      </div></td>
+      <td><span class="chip ${chip}">${f===100?'🏆 100%':f+'%'}</span></td>
+    </tr>`;
+  }
+  tbody.innerHTML = html;
+}
+
+function filterTable() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  const filtered = q ? state.oquvchilar.filter(o=>o.ism.toLowerCase().includes(q)) : state.oquvchilar;
+  renderOquvchilar(filtered);
+}
+
+// ═══════════════════════════════════════════
+// ANALITIKA
+// ═══════════════════════════════════════════
+function renderAnalitika() {
+  const data = state.analitika;
+  if (!data.length) {
+    document.getElementById('analitika-chart').innerHTML =
+      '<div style="color:var(--muted);text-align:center;padding:32px">/test buyrug\'ini botda ishlatgach ko\'rinadi</div>';
+    return;
+  }
+  const oxirgi = data.slice(-30);
+  const jami_y = oxirgi.reduce((s,e)=>s+e.yuborildi,0);
+  const jami_x = oxirgi.reduce((s,e)=>s+e.xato,0);
+  const jami_j = oxirgi.reduce((s,e)=>s+e.jami,0);
+  document.getElementById('an-jami').textContent = jami_j;
+  document.getElementById('an-muvaffaq').textContent = jami_y;
+  document.getElementById('an-xato').textContent = jami_x;
+
+  const bars = data.slice(-14).reverse().map(e=>{
+    const d = new Date(e.vaqt);
+    const label = d.toLocaleDateString('uz-UZ',{day:'2-digit',month:'short'});
+    const f = e.jami>0 ? Math.round(e.yuborildi/e.jami*100) : 0;
+    return `<div class="chart-bar-row">
+      <span class="chart-label">${label}</span>
+      <div class="chart-bar-track"><div class="chart-bar-val" style="width:${f}%"></div></div>
+      <span class="chart-pct">${f}%</span>
+      <span style="font-size:.75rem;color:var(--muted)">✅${e.yuborildi} ❌${e.xato}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('analitika-chart').innerHTML = bars || '<div style="color:var(--muted);text-align:center;padding:32px">Ma\'lumot yo\'q</div>';
+}
+
+// ═══════════════════════════════════════════
+// E'LON
+// ═══════════════════════════════════════════
+function elonPreview() {
+  const matn = document.getElementById('elon-matn').value.trim();
+  if (!matn) return;
+  document.getElementById('elon-preview').style.display='block';
+  document.getElementById('elon-preview-text').textContent = matn;
+}
+
+function elonYuborish() {
+  const matn = document.getElementById('elon-matn').value.trim();
+  if (!matn) { showToast('⚠️','E\'lon matnini kiriting'); return; }
+  const n = Object.keys(state.davomat).length;
+  document.getElementById('elon-status').innerHTML =
+    `<div style="color:var(--yellow)">⚠️ Bu funksiya bot orqali ishlaydi. Botda <code>/elon</code> buyrug'ini ishlatib, matnni yuboring.</div>
+     <div style="margin-top:8px;color:var(--muted);font-size:.8rem">👥 ${n} ta o'quvchi ro'yxatda</div>`;
+}
+
+function loadElonStats() {
+  const n_users = Object.keys(state.davomat).length;
+  const bugun = new Date();
+  const oy = bugun.getFullYear()+'-'+(bugun.getMonth()+1).toString().padStart(2,'0');
+  let toliq = 0;
+  for (const [tid, info] of Object.entries(state.davomat)) {
+    const oy_dav = Object.entries(info.davomat||{}).filter(([s])=>s.startsWith(oy));
+    const k = oy_dav.filter(([,v])=>v===true).length;
+    if (k > 0) toliq++;
+  }
+  document.getElementById('elon-stats-content').innerHTML =
+    `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
+      <div><div style="font-size:1.5rem;font-weight:700">${n_users}</div><div style="color:var(--muted);font-size:.8rem">Jami o'quvchi</div></div>
+      <div><div style="font-size:1.5rem;font-weight:700">${state.guruhlar.length}</div><div style="color:var(--muted);font-size:.8rem">Guruhlar</div></div>
+      <div><div style="font-size:1.5rem;font-weight:700">${toliq}</div><div style="color:var(--muted);font-size:.8rem">Davomat bor</div></div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════
+// NAV
+// ═══════════════════════════════════════════
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i)=>{
+    const names=['dashboard','davomat','oquvchilar','analitika','elon'];
+    t.classList.toggle('active', names[i]===name);
+  });
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+
+  if (name==='dashboard')  loadDashboard();
+  if (name==='davomat')    loadGuruhlar();
+  if (name==='oquvchilar') { loadAll().then(()=>renderOquvchilar(state.oquvchilar)); }
+  if (name==='analitika')  { loadAll().then(()=>renderAnalitika()); }
+  if (name==='elon')       { loadAll().then(()=>loadElonStats()); }
+}
+
+// ═══════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════
+let toastTimer;
+function showToast(icon, msg) {
+  document.getElementById('toast-icon').textContent = icon;
+  document.getElementById('toast-msg').textContent  = msg;
+  const el = document.getElementById('toast');
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>el.classList.remove('show'), 3000);
+}
+
+// ═══════════════════════════════════════════
+// CLOCK
+// ═══════════════════════════════════════════
+function updateClock() {
+  const now = new Date();
+  document.getElementById('time-display').textContent =
+    now.toLocaleTimeString('uz-UZ',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+loadDashboard();
+</script>
+</body>
+</html>
