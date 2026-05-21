@@ -1,0 +1,80 @@
+{
+  "7704475457": [
+    {
+      "ism": "HUSANJON RAVShANOV AVAZJON O‘G‘LI",
+      "fan": "Matematika",
+      "vaqt": "10:30",
+      "kunlar": [
+        1,
+        3,
+        5
+      ],
+      "otuvchi": "SHOXJAHON",
+      "varaq": "Biloliddin"
+    },
+    {
+      "ism": "HUSANJON RAVShANOV AVAZJON O‘G‘LI",
+      "fan": "Rus tili",
+      "vaqt": "10:30",
+      "kunlar": [
+        0,
+        2,
+        4
+      ],
+      "otuvchi": "SABOHAT",
+      "varaq": "Aziz"
+    }
+  ],
+  "8056291667": [
+    {
+      "ism": "DINORA MUXIDDINOVA ShUHRAT QIZI",
+      "fan": "Matematika",
+      "vaqt": "10:30",
+      "kunlar": [
+        1,
+        3,
+        5
+      ],
+      "otuvchi": "SHOXJAHON",
+      "varaq": "Biloliddin"
+    },
+    {
+      "ism": "DINORA MUXIDDINOVA ShUHRAT QIZI",
+      "fan": "Rus tili",
+      "vaqt": "10:30",
+      "kunlar": [
+        0,
+        2,
+        4
+      ],
+      "otuvchi": "SABOHAT",
+      "varaq": "Aziz"
+    }
+  ],
+  "8018590925": [
+    {
+      "ism": "ODINA JAHONGIROVA JAHONGIR QIZI",
+      "fan": "Matematika",
+      "vaqt": "10:30",
+      "kunlar": [
+        1,
+        3,
+        5
+      ],
+      "otuvchi": "SHOXJAHON",
+      "varaq": "Biloliddin"
+    },
+    {
+      "ism": "ODINA JAHONGIROVA JAHONGIR QIZI",
+      "fan": "Rus tili",
+      "vaqt": "10:30",
+      "kunlar": [
+        0,
+        2,
+        4
+      ],
+      "otuvchi": "SABOHAT",
+      "varaq": "Aziz"
+    }
+  ]
+}
