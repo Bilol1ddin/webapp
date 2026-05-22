@@ -529,12 +529,34 @@ hr{border:none;border-top:1px solid var(--border);margin:18px 0}
 const TG = window.Telegram?.WebApp;
 if(TG){ TG.ready(); TG.expand(); }
 
+// ── LOCALSTORAGE — doimiy saqlash ──
+const LS_KEY = 'ith_davomat_v1';
+
+function lsLoad(){
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    return raw ? JSON.parse(raw) : {};
+  }catch(e){ return {}; }
+}
+function lsSave(data){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(data)); }
+  catch(e){ console.warn('localStorage xato:', e); }
+}
+function lsSet(tid, sana, keldi){
+  const d = lsLoad();
+  if(!d[tid]) d[tid] = {};
+  d[tid][sana] = keldi;
+  lsSave(d);
+}
+function lsClear(){
+  localStorage.removeItem(LS_KEY);
+}
+
 // ── STATE ──
 const S = {
   users:{}, davomat:{}, analitika:[],
   guruhlar:[], oquvchilar:[],
-  // O'zgartirilgan yozuvlar — saqlanmagan
-  pending: {},   // {tid: {sana: keldi, ...}}
+  pending: {},   // {tid: {sana: keldi}} — saqlash uchun navbat
   jg:null, js:null, loaded:false
 };
 const KQ={0:'Du',1:'Se',2:'Cho',3:'Pa',4:'Ju',5:'Sha'};
@@ -602,6 +624,8 @@ async function saveDavomat(){
       TG.sendData(payload);
       // S.pending ni tozalash
       S.pending={};
+      // localStorage ni ham tozalash (bot saqladi)
+      lsClear();
       updatePendingUI();
       toast('✅ '+n+' ta yozuv saqlandi!');
       // 2 soniya keyin JSON dan qayta o'qish
@@ -633,12 +657,20 @@ async function loadAll(){
   S.users=u||{};
   // Mavjud pending ni saqlab turamiz — server ma'lumoti ustiga yozmaymiz
   const serverDav=d?.oquvchilar||{};
-  // Server + pending birlashtirish
+  // Server ma'lumoti asosi
   S.davomat={};
   for(const[k,v] of Object.entries(serverDav)){
     S.davomat[k]={ism:v.ism,davomat:{...v.davomat}};
   }
-  // Pending ni ustiga qo'shamiz
+  // localStorage dan mahalliy o'zgarishlarni ustiga qo'yamiz (DOIM ustunlik qiladi)
+  const local = lsLoad();
+  for(const[tid,recs] of Object.entries(local)){
+    if(!S.davomat[tid]) S.davomat[tid]={ism:serverDav[tid]?.ism||'',davomat:{}};
+    for(const[sana,keldi] of Object.entries(recs)){
+      S.davomat[tid].davomat[sana]=keldi;
+    }
+  }
+  // Pending ham ustiga (hali saqlanmaganlar)
   for(const[tid,recs] of Object.entries(S.pending)){
     if(!S.davomat[tid]) S.davomat[tid]={ism:'',davomat:{}};
     for(const[sana,keldi] of Object.entries(recs)){
@@ -823,18 +855,23 @@ function renderStus(){
 
 function setDav(tid,keldi){
   if(!S.js)return;
-  // 1. Xotirada saqlash
+  // 1. localStorage ga darhol saqlash (sahifa yopilsa ham saqlanadi)
+  lsSet(tid, S.js, keldi);
+  // 2. Xotirada yangilash
   if(!S.davomat[tid])S.davomat[tid]={ism:'',davomat:{}};
   S.davomat[tid].davomat[S.js]=keldi;
-  // 2. Pending ga qo'shish (saqlanmagan deb belgilash)
+  // 3. Pending ga qo'shish (bot ga yuborish uchun)
   pendingAdd(tid,S.js,keldi);
-  // 3. UI yangilash
+  // 4. UI yangilash
   renderStus();
   toast((keldi?'✅ ':'❌ ')+(S.davomat[tid].ism||tid).split(' ')[0]+' · '+(keldi?'keldi':'kelmadi'));
 }
 
 function allSet(keldi){
-  if(S.jg&&S.js)S.jg.oquvchilar.forEach(oq=>setDav(oq.tid,keldi));
+  if(!S.jg||!S.js)return;
+  S.jg.oquvchilar.forEach(oq=>setDav(oq.tid,keldi));
+  const n=S.jg.oquvchilar.length;
+  toast((keldi?'✅ Barchasi keldi':'❌ Hech kim kelmadi')+' ('+n+' ta)');
 }
 
 function backG(){
